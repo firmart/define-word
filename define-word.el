@@ -64,7 +64,9 @@ By default, `message' is used."
 (defcustom define-word-services
   '((wordnik "http://wordnik.com/words/%s" define-word--parse-wordnik)
     (openthesaurus "https://www.openthesaurus.de/synonyme/%s" define-word--parse-openthesaurus)
-    (webster "http://webstersdictionary1828.com/Dictionary/%s" define-word--parse-webster))
+    (webster "http://webstersdictionary1828.com/Dictionary/%s" define-word--parse-webster)
+    (frdic "http://www.frdic.com/dicts/fr/%s" define-word--parse-frdic)
+    (larousse "https://www.larousse.fr/dictionnaires/francais/%s" define-word--parse-larousse))
   "Services for define-word, A list of lists of the
   format (symbol url function-for-parsing).
 Instead of an url string, url can be a custom function for retrieving results."
@@ -156,6 +158,10 @@ In a non-interactive call SERVICE can be passed."
   '((t :inherit default))
   "Face for the body of the definition")
 
+(defface define-word-face-3
+  '((t (:inherit font-lock-comment-face :foreground "aquamarine")))
+  "Face for the example of the definition")
+
 (defun define-word--join-results (results)
   (mapconcat
    #'identity
@@ -175,15 +181,27 @@ In a non-interactive call SERVICE can be passed."
   '(("<\\(?:em\\|i\\)>\\(.*?\\)</\\(?:em\\|i\\)>" italic)
     ("<xref>\\(.*?\\)</xref>" link)
     ("<strong>\\(.*?\\)</strong>" bold)
-    ("<internalXref.*?>\\(.*?\\)</internalXref>" default)))
+    ("<internalXref.*?>\\(.*?\\)</internalXref>" default)
+    ("<sup>\\(.*?\\)</sup>" superscript)
+    ("<sub>\\(.*?\\)</sub>" subscript)))
 
 (defun define-word--convert-html-tag-to-face (str)
   "Replace semantical HTML markup in STR with the relevant faces."
   (with-temp-buffer
     (insert str)
     (cl-loop for (regexp face) in define-word--tag-faces do
-         (define-word--regexp-to-face regexp face))
+	     (define-word--regexp-to-face regexp face))
     (buffer-string)))
+
+(defun define-word-html-entities-to-unicode (string)
+  (let* ((plist '(Aacute "Á" aacute "á" Acirc "Â" acirc "â" acute "´" AElig "Æ" aelig "æ" Agrave "À" agrave "à" alefsym "ℵ" Alpha "Α" alpha "α" amp "&" and "∧" ang "∠" apos "'" aring "å" Aring "Å" asymp "≈" atilde "ã" Atilde "Ã" auml "ä" Auml "Ä" bdquo "„" Beta "Β" beta "β" brvbar "¦" bull "•" cap "∩" ccedil "ç" Ccedil "Ç" cedil "¸" cent "¢" Chi "Χ" chi "χ" circ "ˆ" clubs "♣" cong "≅" copy "©" crarr "↵" cup "∪" curren "¤" Dagger "‡" dagger "†" darr "↓" dArr "⇓" deg "°" Delta "Δ" delta "δ" diams "♦" divide "÷" eacute "é" Eacute "É" ecirc "ê" Ecirc "Ê" egrave "è" Egrave "È" empty "∅" emsp " " ensp " " Epsilon "Ε" epsilon "ε" equiv "≡" Eta "Η" eta "η" eth "ð" ETH "Ð" euml "ë" Euml "Ë" euro "€" exist "∃" fnof "ƒ" forall "∀" frac12 "½" frac14 "¼" frac34 "¾" frasl "⁄" Gamma "Γ" gamma "γ" ge "≥" gt ">" harr "↔" hArr "⇔" hearts "♥" hellip "…" iacute "í" Iacute "Í" icirc "î" Icirc "Î" iexcl "¡" igrave "ì" Igrave "Ì" image "ℑ" infin "∞" int "∫" Iota "Ι" iota "ι" iquest "¿" isin "∈" iuml "ï" Iuml "Ï" Kappa "Κ" kappa "κ" Lambda "Λ" lambda "λ" lang "〈" laquo "«" larr "←" lArr "⇐" lceil "⌈" ldquo "“" le "≤" lfloor "⌊" lowast "∗" loz "◊" lrm "" lsaquo "‹" lsquo "‘" lt "<" macr "¯" mdash "—" micro "µ" middot "·" minus "−" Mu "Μ" mu "μ" nabla "∇" nbsp "" ndash "–" ne "≠" ni "∋" not "¬" notin "∉" nsub "⊄" ntilde "ñ" Ntilde "Ñ" Nu "Ν" nu "ν" oacute "ó" Oacute "Ó" ocirc "ô" Ocirc "Ô" OElig "Œ" oelig "œ" ograve "ò" Ograve "Ò" oline "‾" omega "ω" Omega "Ω" Omicron "Ο" omicron "ο" oplus "⊕" or "∨" ordf "ª" ordm "º" oslash "ø" Oslash "Ø" otilde "õ" Otilde "Õ" otimes "⊗" ouml "ö" Ouml "Ö" para "¶" part "∂" permil "‰" perp "⊥" Phi "Φ" phi "φ" Pi "Π" pi "π" piv "ϖ" plusmn "±" pound "£" Prime "″" prime "′" prod "∏" prop "∝" Psi "Ψ" psi "ψ" quot "\"" radic "√" rang "〉" raquo "»" rarr "→" rArr "⇒" rceil "⌉" rdquo "”" real "ℜ" reg "®" rfloor "⌋" Rho "Ρ" rho "ρ" rlm "" rsaquo "›" rsquo "’" sbquo "‚" scaron "š" Scaron "Š" sdot "⋅" sect "§" shy "" Sigma "Σ" sigma "σ" sigmaf "ς" sim "∼" spades "♠" sub "⊂" sube "⊆" sum "∑" sup "⊃" sup1 "¹" sup2 "²" sup3 "³" supe "⊇" szlig "ß" Tau "Τ" tau "τ" there4 "∴" Theta "Θ" theta "θ" thetasym "ϑ" thinsp " " thorn "þ" THORN "Þ" tilde "˜" times "×" trade "™" uacute "ú" Uacute "Ú" uarr "↑" uArr "⇑" ucirc "û" Ucirc "Û" ugrave "ù" Ugrave "Ù" uml "¨" upsih "ϒ" Upsilon "Υ" upsilon "υ" uuml "ü" Uuml "Ü" weierp "℘" Xi "Ξ" xi "ξ" yacute "ý" Yacute "Ý" yen "¥" yuml "ÿ" Yuml "Ÿ" Zeta "Ζ" zeta "ζ" zwj "" zwnj ""))
+	 (get-function (lambda (s) (or (plist-get plist (intern (substring s 1 -1))) s))))
+    (replace-regexp-in-string "&[^; ]*;" get-function string))) 
+
+(defun define-word--select-service ()
+  (interactive)
+  (let ((target (completing-read "define-word services: " (mapcar #'car define-word-services))))
+    (setq define-word-default-service (intern target))))
 
 (defun define-word--parse-wordnik ()
   "Parse output from wordnik site and return formatted list"
@@ -248,6 +266,42 @@ In a non-interactive call SERVICE can be passed."
         (push (string-trim part) results))
       (when (setq results (nreverse results))
         (define-word--join-results results)))))
+
+(defun define-word--parse-larousse ()
+  "Parse output from larousse site and return formatted list"
+  (save-match-data
+    (let (results part)
+      (when (re-search-forward "<p class=\"CatgramDefinition\">\\([^<]*\\)" nil t)
+	(setq part (propertize (match-string 1) 'face 'define-word-face-1))) 
+      (push part results)
+      (while (re-search-forward "<li class=\"DivisionDefinition\">\\([^<]*\\)" nil t)
+	(let (entry)
+	  (push (propertize
+		 (concat "- " (substring-no-properties (define-word-html-entities-to-unicode (match-string 1))))
+		 'face 'define-word-face-2)
+		entry)
+	  (while (re-search-forward "<span class=\"ExempleDefinition\">\\([^<]*\\)" nil t)
+	    (push (propertize (define-word-html-entities-to-unicode (match-string 1)) 'face 'define-word-face-3) entry))
+	  (push (string-join (nreverse entry) " ") results)))
+      (when (setq results (nreverse results))
+	(define-word--convert-html-tag-to-face (define-word--join-results results))))))
+
+(defun define-word--parse-frdic ()
+  "Parse output from frdic site and return formatted list"
+  (save-match-data
+    (let (results part)
+      (while (re-search-forward "<span class=cara>\\([^<]*\\)</span>" nil t)
+	(setq part (match-string 1))
+	(unless (= 0 (length part))
+	  (setq part (concat part " ")))
+	(when (re-search-forward "<span class=exp>\\([^<]*\\)</span>" nil t)
+	  (push (concat (propertize part 'face 'define-word-face-1)
+			(propertize
+			 (substring-no-properties (match-string 1))
+			 'face 'define-word-face-2))
+		results)))
+      (when (setq results (nreverse results))
+	(define-word--convert-html-tag-to-face (define-word--join-results results))))))
 
 (provide 'define-word)
 
